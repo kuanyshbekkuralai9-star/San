@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Білім жолы — ойын</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=Rubik:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --grass1:#A6DB5B; --grass2:#6CBB3A; --cream:#FFF1C9; --mauve:#8E5B8A; --ink:#3A1F4D;
+  --orange:#FFC24B; --orange-dark:#D68A00; --card:#FFF8E6; --good:#7ED957; --bad:#FF8A80; --sea:#5CC8E8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#A6DB5B,#6CBB3A);font-family:'Nunito','Segoe UI',system-ui,sans-serif;color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#board{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+/* HUD */
+.hud{position:fixed;z-index:10;display:flex;gap:12px;align-items:center}
+#hudL{top:2vmin;left:2vmin}
+#hudR{top:2vmin;right:2vmin}
+.chip{background:var(--card);border:4px solid var(--mauve);border-radius:999px;padding:.6vmin 2.4vmin;font-weight:900;font-size:clamp(18px,3vmin,34px);box-shadow:0 5px 0 rgba(58,31,77,.25);display:flex;align-items:center;gap:.8vmin;white-space:nowrap}
+.chip.title{font-family:'Rubik','Nunito',sans-serif;font-weight:800;color:var(--mauve)}
+.iconbtn{cursor:pointer;width:clamp(44px,6vmin,68px);height:clamp(44px,6vmin,68px);justify-content:center;padding:0;font-size:clamp(20px,3.2vmin,36px)}
+
+/* Buttons */
+button{font-family:inherit;cursor:pointer}
+.big{background:var(--orange);color:var(--ink);border:none;border-bottom:8px solid var(--orange-dark);border-radius:28px;font-size:clamp(24px,4.2vmin,48px);font-weight:900;padding:1.6vmin 6vmin;box-shadow:0 8px 18px rgba(0,0,0,.22);transition:transform .08s}
+.big:active{transform:translateY(5px);border-bottom-width:3px}
+#go{position:fixed;z-index:12;left:50%;bottom:3.5vmin;transform:translateX(-50%);animation:pulse 1.3s ease-in-out infinite}
+#go:active{transform:translateX(-50%) translateY(5px)}
+#go[hidden]{display:none}
+@keyframes pulse{0%,100%{scale:1}50%{scale:1.07}}
+
+/* Overlays + cards */
+.overlay{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(58,31,77,.45);padding:2vmin}
+.overlay.on{display:flex;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.card{width:min(94vw,1120px);max-height:94vh;overflow:auto;background:var(--card);border:7px solid var(--mauve);border-radius:36px;box-shadow:0 14px 0 rgba(58,31,77,.28);padding:3.2vmin 4vmin;text-align:center;animation:pop .3s}
+@keyframes pop{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+.card h1{font-family:'Rubik','Nunito',sans-serif;font-weight:800;font-size:clamp(34px,7vmin,80px);color:var(--mauve);margin:.2em 0}
+.card h2{font-size:clamp(24px,4.2vmin,48px);line-height:1.25;margin:.3em 0 .6em;font-weight:900}
+.card p{font-size:clamp(18px,2.8vmin,32px);line-height:1.4;margin:.4em 0 1em;font-weight:700}
+.qnum{display:inline-block;background:var(--mauve);color:#fff;border-radius:999px;padding:.4vmin 2.4vmin;font-weight:900;font-size:clamp(18px,2.8vmin,30px)}
+#opts{display:grid;grid-template-columns:1fr 1fr;gap:2vmin;margin:1.4vmin 0}
+@media (max-aspect-ratio:1/1){#opts{grid-template-columns:1fr}}
+.opt{display:flex;align-items:center;gap:1.6vmin;text-align:left;background:#fff;border:5px solid #CFE7A3;border-radius:24px;padding:1.6vmin 2vmin;min-height:9vmin;font-size:clamp(20px,3.2vmin,38px);font-weight:800;color:var(--ink);box-shadow:0 6px 0 #CFE7A3}
+.opt:active{transform:translateY(4px);box-shadow:0 2px 0 #CFE7A3}
+.opt .let{flex:none;width:clamp(34px,5vmin,56px);height:clamp(34px,5vmin,56px);border-radius:50%;background:var(--mauve);color:#fff;display:grid;place-items:center;font-weight:900}
+.opt.ok{background:var(--good);border-color:#4DAA2A;box-shadow:0 6px 0 #4DAA2A}
+.opt.no{background:var(--bad);border-color:#D6544A;box-shadow:0 6px 0 #D6544A}
+.opt.dim{opacity:.55}
+.opt[disabled]{cursor:default}
+#fb{min-height:1.2em;font-size:clamp(20px,3vmin,34px);font-weight:900;margin:1vmin 0}
+#fb small{display:block;font-size:.78em;font-weight:700;margin-top:.4em;color:#5b3d6e}
+
+/* Mini games */
+#mgHud{display:flex;justify-content:center;gap:2vmin;margin:1vmin 0}
+#mgArea{position:relative;height:min(46vh,520px);background:linear-gradient(#BDEBFF,#E8F7C8);border:5px dashed var(--mauve);border-radius:28px;overflow:hidden;margin:1vmin 0 2vmin}
+#mgArea.hide{display:none}
+.star{position:absolute;width:clamp(64px,11vmin,120px);height:clamp(64px,11vmin,120px);background:linear-gradient(#FFE36B,#FFA800);clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);animation:starin .25s;cursor:pointer}
+@keyframes starin{from{scale:0}to{scale:1}}
+#numGrid{position:absolute;inset:3vmin;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2vmin}
+.num{border:none;border-bottom:7px solid #8E5B8A;border-radius:22px;background:#fff;color:var(--mauve);font-size:clamp(32px,7vmin,80px);font-weight:900}
+.num.done{background:var(--good);border-color:#4DAA2A;color:#fff}
+.num.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+
+/* Fireworks */
+#fw{position:fixed;inset:0;z-index:40;pointer-events:none}
+#end{z-index:50}
+.stars-row{font-size:clamp(34px,7vmin,80px);letter-spacing:.2em}
+.legal{font-size:clamp(14px,2vmin,22px);opacity:.75;margin-top:1.4vmin}
+
+/* Board tile hover */
+.tile.next{cursor:pointer;animation:nexttile 1s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes nexttile{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+</style>
+</head>
+<body>
+
+<svg id="board" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Ойын тақтасы: шалғындағы жол">
+<defs>
+  <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A6DB5B"/><stop offset="1" stop-color="#6CBB3A"/></linearGradient>
+  <radialGradient id="sea" cx=".4" cy=".4" r=".8"><stop offset="0" stop-color="#8FE3F5"/><stop offset="1" stop-color="#3BB5D8"/></radialGradient>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#2d5a12" flood-opacity=".35"/></filter>
+
+  <g id="tree">
+    <rect x="-16" y="-60" width="32" height="100" rx="10" fill="#7A4A25"/>
+    <circle cx="0" cy="-120" r="75" fill="#2F8F4E"/>
+    <circle cx="-55" cy="-85" r="52" fill="#37A25A"/>
+    <circle cx="55" cy="-88" r="50" fill="#37A25A"/>
+    <circle cx="-14" cy="-140" r="34" fill="#4CB86C" opacity=".7"/>
+  </g>
+  <g id="ptree">
+    <rect x="-14" y="-50" width="28" height="90" rx="9" fill="#6F4A33"/>
+    <circle cx="0" cy="-105" r="68" fill="#8B5FBF"/>
+    <circle cx="-50" cy="-76" r="46" fill="#A279D6"/>
+    <circle cx="50" cy="-78" r="44" fill="#A279D6"/>
+    <circle cx="-10" cy="-125" r="28" fill="#B995E4" opacity=".7"/>
+  </g>
+  <g id="bush">
+    <ellipse cx="0" cy="0" rx="62" ry="34" fill="#8B5FBF"/>
+    <ellipse cx="-28" cy="-14" rx="34" ry="24" fill="#A279D6"/>
+    <ellipse cx="26" cy="-16" rx="32" ry="22" fill="#A279D6"/>
+  </g>
+  <g id="gbush">
+    <ellipse cx="0" cy="0" rx="58" ry="30" fill="#2F8F4E"/>
+    <ellipse cx="-26" cy="-12" rx="32" ry="22" fill="#4CB86C"/>
+    <ellipse cx="24" cy="-14" rx="30" ry="20" fill="#4CB86C"/>
+  </g>
+  <g id="flower">
+    <circle cx="0" cy="-8" r="7" fill="#FFE36B"/>
+    <circle cx="-10" cy="0" r="7" fill="#FF8FB3"/><circle cx="10" cy="0" r="7" fill="#FF8FB3"/>
+    <circle cx="0" cy="10" r="7" fill="#FF8FB3"/><circle cx="0" cy="0" r="5" fill="#FFE36B"/>
+  </g>
+  <g id="hut">
+    <rect x="-56" y="-62" width="112" height="62" rx="6" fill="#D9A441"/>
+    <polygon points="-82,-58 0,-155 82,-58" fill="#E7C46A"/>
+    <path d="M-60 -70 L-8 -128 M-34 -66 L8 -118 M0 -64 L26 -108 M32 -62 L46 -90" stroke="#C4932F" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M-18 0 L-18 -32 Q0 -52 18 -32 L18 0 Z" fill="#8B5A2B"/>
+  </g>
+  <g id="wood">
+    <rect x="-62" y="-72" width="124" height="72" fill="#C96A24"/>
+    <polygon points="-86,-70 0,-160 86,-70" fill="#E8833A"/>
+    <path d="M-62 -50 H62 M-62 -28 H62" stroke="#A9531A" stroke-width="4"/>
+    <rect x="-16" y="-44" width="32" height="44" rx="4" fill="#7A3E12"/>
+    <circle cx="9" cy="-22" r="3" fill="#FFE36B"/>
+  </g>
+  <g id="candy">
+    <rect x="-58" y="-68" width="116" height="68" rx="8" fill="#FFB6C8"/>
+    <path d="M-76 -64 Q-76 -128 0 -138 Q76 -128 76 -64 Z" fill="#7B4A2E"/>
+    <circle cx="-40" cy="-84" r="8" fill="#FFE9F0"/><circle cx="0" cy="-104" r="8" fill="#FFE9F0"/><circle cx="40" cy="-84" r="8" fill="#FFE9F0"/>
+    <rect x="-14" y="-42" width="28" height="42" rx="14" fill="#9B5FC9"/>
+    <rect x="-50" y="-52" width="22" height="22" rx="5" fill="#FFF1C9"/>
+    <rect x="28" y="-52" width="22" height="22" rx="5" fill="#FFF1C9"/>
+  </g>
+  <g id="cottage">
+    <rect x="-84" y="-100" width="168" height="100" fill="#F3F1EC"/>
+    <path d="M-84 -66 H84 M-84 -33 H84 M-42 -100 V-66 M42 -66 V-33 M-42 -33 V0" stroke="#D5D1C6" stroke-width="3"/>
+    <polygon points="-110,-98 0,-196 110,-98" fill="#D9622B"/>
+    <polygon points="-110,-98 0,-196 110,-98 96,-98 0,-176 -96,-98" fill="#B84E1E"/>
+    <rect x="-24" y="-64" width="48" height="64" rx="6" fill="#9B5FC9"/>
+    <circle cx="14" cy="-30" r="4" fill="#FFE36B"/>
+    <rect x="42" y="-82" width="32" height="38" rx="4" fill="#9ADCF2" stroke="#fff" stroke-width="5"/>
+    <rect x="-74" y="-82" width="32" height="38" rx="4" fill="#9ADCF2" stroke="#fff" stroke-width="5"/>
+    <rect x="52" y="-170" width="22" height="46" fill="#B84E1E"/>
+  </g>
+  <g id="well">
+    <ellipse cx="0" cy="0" rx="52" ry="18" fill="#C9C4D4"/>
+    <rect x="-50" y="-52" width="100" height="52" fill="#E4E1EC"/>
+    <path d="M-50 -34 H50 M-25 -52 V-34 M25 -34 V0 M-25 -34 V-16" stroke="#C0BBCB" stroke-width="3"/>
+    <ellipse cx="0" cy="-52" rx="50" ry="16" fill="#8A5A3A"/>
+    <ellipse cx="0" cy="-52" rx="38" ry="11" fill="#5A3A25"/>
+    <rect x="-52" y="-112" width="8" height="62" fill="#7A4A25"/><rect x="44" y="-112" width="8" height="62" fill="#7A4A25"/>
+    <polygon points="-70,-110 0,-150 70,-110" fill="#B5A3D9"/>
+  </g>
+  <g id="bean">
+    <path d="M0 0 C-60 -50 60 -100 -10 -170 C-70 -230 40 -260 0 -320" stroke="#2F9A3C" stroke-width="26" stroke-linecap="round" fill="none"/>
+    <path d="M0 0 C-60 -50 60 -100 -10 -170 C-70 -230 40 -260 0 -320" stroke="#58C95F" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <ellipse cx="-58" cy="-92" rx="34" ry="16" fill="#3FB04B" transform="rotate(-25 -58 -92)"/>
+    <ellipse cx="52" cy="-130" rx="34" ry="16" fill="#3FB04B" transform="rotate(25 52 -130)"/>
+    <ellipse cx="-52" cy="-205" rx="34" ry="16" fill="#3FB04B" transform="rotate(-20 -52 -205)"/>
+    <ellipse cx="44" cy="-262" rx="32" ry="15" fill="#3FB04B" transform="rotate(20 44 -262)"/>
+  </g>
+  <g id="pawn">
+    <ellipse cx="0" cy="2" rx="34" ry="10" fill="#000" opacity=".22"/>
+    <path d="M-30 0 Q-34 -24 -13 -54 Q0 -68 13 -54 Q34 -24 30 0 Z" fill="#2A78D1"/>
+    <path d="M-20 -6 Q-22 -26 -8 -48" stroke="#6FB1F5" stroke-width="7" stroke-linecap="round" fill="none" opacity=".8"/>
+    <circle cx="0" cy="-70" r="25" fill="#3B8BEA"/>
+    <circle cx="-9" cy="-74" r="6" fill="#fff"/><circle cx="9" cy="-74" r="6" fill="#fff"/>
+    <circle cx="-8" cy="-73" r="3" fill="#1a2a55"/><circle cx="10" cy="-73" r="3" fill="#1a2a55"/>
+    <path d="M-10 -61 Q0 -52 10 -61" stroke="#1a2a55" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  </g>
+  <g id="princess">
+    <use href="#pawn"/>
+    <path d="M-16 -92 L-12 -112 L-4 -98 L0 -116 L4 -98 L12 -112 L16 -92 Z" fill="#FFC928" stroke="#D68A00" stroke-width="2"/>
+  </g>
+</defs>
+
+<!-- Grass -->
+<rect width="1600" height="900" fill="url(#grass)"/>
+<ellipse cx="800" cy="330" rx="620" ry="80" fill="#7DC745" opacity=".55"/>
+<ellipse cx="800" cy="680" rx="520" ry="90" fill="#7DC745" opacity=".55"/>
+
+<!-- Scenery (back) -->
+<use href="#ptree" transform="translate(1250,70) scale(1.3)"/>
+<use href="#tree" transform="translate(40,60) scale(1.6)"/>
+<use href="#tree" transform="translate(560,40) scale(1.1)"/>
+<use href="#ptree" transform="translate(860,30) scale(.95)"/>
+<use href="#bush" transform="translate(1480,240) scale(1.1)"/>
+<use href="#bush" transform="translate(260,262)"/>
+
+<use href="#hut" transform="translate(430,400)"/>
+<use href="#wood" transform="translate(770,402)"/>
+<use href="#candy" transform="translate(1070,402)"/>
+
+<use href="#bean" transform="translate(960,860)"/>
+<use href="#well" transform="translate(1160,740)"/>
+<use href="#gbush" transform="translate(700,640)"/>
+<use href="#cottage" transform="translate(690,770)"/>
+<use href="#tree" transform="translate(70,820) scale(1.3)"/>
+<use href="#bush" transform="translate(300,620) scale(.9)"/>
+<use href="#gbush" transform="translate(1420,500)"/>
+
+<!-- Sea, bottom-right -->
+<path d="M1300 900 Q1330 740 1470 700 Q1560 680 1600 690 V900 Z" fill="#F0D79A"/>
+<path d="M1340 900 Q1370 770 1480 735 Q1560 715 1600 724 V900 Z" fill="url(#sea)"/>
+<path d="M1400 800 q25 -12 50 0 t50 0" stroke="#fff" stroke-width="5" fill="none" opacity=".7" stroke-linecap="round"/>
+<path d="M1450 850 q25 -12 50 0 t50 0" stroke="#fff" stroke-width="5" fill="none" opacity=".7" stroke-linecap="round"/>
+<g transform="translate(1500,780) rotate(-8)"><path d="M-34 0 Q0 28 34 0 Z" fill="#C9702B"/><path d="M-34 0 H34" stroke="#8B4A18" stroke-width="4"/></g>
+
+<!-- Flowers -->
+<use href="#flower" transform="translate(240,330)"/><use href="#flower" transform="translate(600,450) scale(.8)"/>
+<use href="#flower" transform="translate(1250,430) scale(.9)"/><use href="#flower" transform="translate(520,610)"/>
+<use href="#flower" transform="translate(880,620) scale(.8)"/><use href="#flower" transform="translate(1400,600)"/>
+<use href="#flower" transform="translate(250,730) scale(.9)"/><use href="#flower" transform="translate(1180,270) scale(.8)"/>
+
+<g id="pathLayer"></g>
+<g id="tiles"></g>
+<g id="pawnLayer">
+  <use id="princessUse" href="#princess"/>
+  <g id="pawnG"><use href="#pawn"/></g>
+</g>
+</svg>
+
+<!-- HUD -->
+<div class="hud" id="hudL"><div class="chip title">🌿 Білім жолы</div><div class="chip" id="prog">Сұрақ 0 / 10</div></div>
+<div class="hud" id="hudR"><div class="chip" id="score">⭐ 0</div><button class="chip iconbtn" id="mute" aria-label="Дыбыс" title="Дыбыс">🔊</button></div>
+<button class="big" id="go" hidden>Алға жылжу ▶</button>
+
+<!-- Start -->
+<div class="overlay on" id="start"><div class="card">
+  <div class="stars-row">🌳🏡⭐</div>
+  <h1>Білім жолы</h1>
+  <p>Қазақстанның білім саласындағы заңдары туралы ойын. 10 сұраққа жауап беріп, 2 мини-ойын ойнап, финишке жет!</p>
+  <p>Тұлға тек «Алға жылжу» батырмасын (немесе келесі тақташаны) басқанда ғана қозғалады.</p>
+  <button class="big" id="startBtn">Ойынды бастау</button>
+</div></div>
+
+<!-- Question -->
+<div class="overlay" id="qmodal"><div class="card">
+  <span class="qnum" id="qnum"></span>
+  <h2 id="qtext"></h2>
+  <div id="opts"></div>
+  <div id="fb"></div>
+  <button class="big" id="qnext" hidden>Жалғастыру</button>
+</div></div>
+
+<!-- Mini game -->
+<div class="overlay" id="mg"><div class="card">
+  <span class="qnum">⭐ Бонус тақташасы</span>
+  <h2 id="mgTitle"></h2>
+  <p id="mgDesc"></p>
+  <div id="mgHud"><span class="chip" id="mgTime"></span><span class="chip" id="mgScore"></span></div>
+  <div id="mgArea" class="hide"></div>
+  <button class="big" id="mgBtn"></button>
+</div></div>
+
+<!-- End -->
+<canvas id="fw"></canvas>
+<div class="overlay" id="end"><div class="card">
+  <div class="stars-row">🎉🏆🎉</div>
+  <h1>Құттықтаймыз!</h1>
+  <p id="endText"></p>
+  <button class="big" id="again">Қайта ойнау</button>
+  <div class="legal">Деректер ашық дереккөздерден (2026 ж.): ресми құжаттармен салыстырып тексеріңіз.</div>
+</div></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Сұрақтар ---------- */
+const QUESTIONS = [
+  {q:'«Білім туралы» Заң қай жылы қабылданды?', o:['1999','2007','2015','2019'], a:1,
+   e:'Заң 2007 жылғы 27 шілдеде қабылданған (№319-III).'},
+  {q:'«Педагог мәртебесі туралы» Заң қай жылы қабылданды?', o:['2010','2015','2019','2024'], a:2,
+   e:'Бұл заң 2019 жылы қабылданып, педагогтің құқықтары мен әлеуметтік кепілдіктерін бекітті.'},
+  {q:'«Педагог мәртебесі туралы» Заң неше баптан тұрады?', o:['11','15','21','30'], a:2,
+   e:'Заң 21 баптан тұрады: құқықтар, әлеуметтік кепілдіктер және міндеттер.'},
+  {q:'Заңда педагог лауазымдарының тізімі қанша атауға дейін кеңейді?', o:['12','20','28','40'], a:2,
+   e:'«Педагог» деген бірыңғай ұғым енгізіліп, лауазымдар тізімі 28 атауға жетті.'},
+  {q:'«Ғылым және технологиялық саясат туралы» Заң қай жылы қабылданды?', o:['2018','2021','2024','2026'], a:2,
+   e:'Заң 2024 жылғы 1 шілдеде қабылданды (№103-VIII).'},
+  {q:'Ғылыми зерттеулердің технологиялық дайындық деңгейін бағалайтын жүйе қалай аталады?', o:['GPA','TRL','IELTS','PISA'], a:1,
+   e:'TRL — технологиялық дайындық деңгейлері, ғылыми жобаның негізділігін бағалауға қолданылады.'},
+  {q:'Буллингке бірінші рет әкімшілік жауапкершілік (айыппұл) қанша АЕК?', o:['5 АЕК','10 АЕК','30 АЕК','100 АЕК'], a:1,
+   e:'Бірінші рет — 10 АЕК, қайталанса — 30 АЕК.'},
+  {q:'«Комфортты мектеп» ұлттық жобасы нені жоюға бағытталған?', o:['Мектеп формасын','Үш ауысымды және апатты мектептерді','Оқулықтарды','Жазғы демалысты'], a:1,
+   e:'Жоба апатты, үш ауысымды мектептерді және оқушы орнының тапшылығын азайтуға бағытталған.'},
+  {q:'2026 жылдан бастап жергілікті атқарушы органдар қай сыныптарға арналған оқулықтарды сатып алады?', o:['1 және 5','3 және 7','9 және 11','2 және 4'], a:1,
+   e:'2026 жылдан бастап 3 және 7-сыныптарға арналған оқулықтарды жергілікті атқарушы органдар сатып алады.'},
+  {q:'Қазақстанда Ұстаздар күні қай күні аталып өтеді?', o:['1 қыркүйек','5 қазан','1 маусым','22 наурыз'], a:1,
+   e:'Ұстаздар күні — 5 қазан.'}
+];
+
+/* ---------- Тақта ---------- */
+const TILES = [
+  {x:140, y:165, t:'start'},
+  {x:340, y:165, t:'q'}, {x:540, y:165, t:'q'}, {x:740, y:165, t:'q'}, {x:940, y:165, t:'q'},
+  {x:1140,y:165, t:'bonus', g:1},
+  {x:1330,y:330, t:'q'},
+  {x:1140,y:495, t:'q'}, {x:940, y:495, t:'q'},
+  {x:740, y:495, t:'bonus', g:2},
+  {x:540, y:495, t:'q'}, {x:340, y:495, t:'q'},
+  {x:150, y:660, t:'q'},
+  {x:400, y:790, t:'finish'}
+];
+let qc = 0;
+TILES.forEach(t => { if (t.t === 'q') { t.qi = qc; t.n = ++qc; } });
+
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const svgEl = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+const pathLayer = $('pathLayer'), tilesG = $('tiles'), pawnG = $('pawnG');
+const pts = TILES.map(t => t.x + ',' + t.y).join(' ');
+svgEl('polyline', {points:pts, fill:'none', stroke:'#4E9E2A', 'stroke-width':150, 'stroke-linejoin':'round', 'stroke-linecap':'round', opacity:.55}, pathLayer);
+svgEl('polyline', {points:pts, fill:'none', stroke:'#FFE9A8', 'stroke-width':122, 'stroke-linejoin':'round', 'stroke-linecap':'round', opacity:.9}, pathLayer);
+
+const tileEls = TILES.map((t, i) => {
+  const g = svgEl('g', {class:'tile', transform:`translate(${t.x} ${t.y}) rotate(${((i * 37) % 7) - 3})`}, tilesG);
+  svgEl('rect', {x:-76, y:-54, width:152, height:108, rx:22, fill:'#FFF3CF', stroke:'#E3BC63', 'stroke-width':5, filter:'url(#soft)'}, g);
+  if (t.t === 'q') {
+    const tx = svgEl('text', {x:0, y:24, 'text-anchor':'middle', 'font-size':74, 'font-weight':900, fill:'#8E5B8A', 'font-family':'Rubik, Nunito, sans-serif'}, g); tx.textContent = t.n;
+  } else if (t.t === 'bonus') {
+    svgEl('polygon', {points:'0,-40 11,-13 40,-13 17,5 25,34 0,17 -25,34 -17,5 -40,-13 -11,-13', fill:'#FFC928', stroke:'#D68A00', 'stroke-width':4, 'stroke-linejoin':'round'}, g);
+    const tx = svgEl('text', {x:0, y:48, 'text-anchor':'middle', 'font-size':20, 'font-weight':900, fill:'#8E5B8A'}, g); tx.textContent = 'БОНУС';
+  } else if (t.t === 'start') {
+    const tx = svgEl('text', {x:0, y:12, 'text-anchor':'middle', 'font-size':34, 'font-weight':900, fill:'#8E5B8A', 'font-family':'Rubik, Nunito, sans-serif'}, g); tx.textContent = 'БАСТАУ';
+  } else {
+    svgEl('rect', {x:-4, y:-46, width:8, height:70, fill:'#7A4A25'}, g);
+    svgEl('polygon', {points:'4,-46 46,-34 4,-20', fill:'#E8483A'}, g);
+    const tx = svgEl('text', {x:0, y:46, 'text-anchor':'middle', 'font-size':26, 'font-weight':900, fill:'#D6544A', 'font-family':'Rubik, Nunito, sans-serif'}, g); tx.textContent = 'ФИНИШ';
+  }
+  g.addEventListener('pointerdown', () => { if (g.classList.contains('next')) advance(); });
+  return g;
+});
+
+const pawnPos = i => ({x: TILES[i].x - (TILES[i].t === 'finish' ? 40 : 0), y: TILES[i].y + 18});
+function setPawn(x, y, r) { pawnG.setAttribute('transform', `translate(${x} ${y}) rotate(${r || 0})`); }
+(() => { const f = TILES[TILES.length - 1]; $('princessUse').setAttribute('transform', `translate(${f.x + 52} ${f.y + 18})`); })();
+
+/* ---------- Күй ---------- */
+let pos = 0, score = 0, correct = 0, busy = false, muted = false, qDone = 0;
+
+function updateHud() {
+  $('score').textContent = '⭐ ' + score;
+  $('prog').textContent = 'Сұрақ ' + qDone + ' / ' + QUESTIONS.length;
+}
+function markNext() {
+  tileEls.forEach(g => g.classList.remove('next'));
+  if (!busy && pos < TILES.length - 1) tileEls[pos + 1].classList.add('next');
+}
+function showGo(on) { $('go').hidden = !on; markNext(); }
+
+/* ---------- Дыбыс ---------- */
+let actx = null;
+function tone(f, d, type, delay, vol) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = actx.currentTime + (delay || 0);
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(vol || .12, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+    o.connect(g); g.connect(actx.destination); o.start(t0); o.stop(t0 + d);
+  } catch (e) {}
+}
+const sndGood = () => { tone(660, .15, 'triangle'); tone(880, .25, 'triangle', .12); };
+const sndBad = () => { tone(220, .3, 'sawtooth', 0, .08); };
+const sndHop = () => tone(520, .09, 'square', 0, .05);
+const sndPop = () => tone(900 + Math.random() * 300, .08, 'triangle', 0, .1);
+$('mute').addEventListener('click', () => { muted = !muted; $('mute').textContent = muted ? '🔇' : '🔊'; });
+
+/* ---------- Қозғалыс ---------- */
+function hop(from, to) {
+  return new Promise(res => {
+    const a = pawnPos(from), b = pawnPos(to), dur = 850, t0 = performance.now();
+    sndHop();
+    (function f(t) {
+      const k = Math.min(1, (t - t0) / dur);
+      const e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e - Math.sin(Math.PI * k) * 80;
+      setPawn(x, y, Math.sin(k * Math.PI * 2) * 9);
+      if (k < 1) requestAnimationFrame(f); else { setPawn(b.x, b.y, 0); sndHop(); res(); }
+    })(t0);
+  });
+}
+
+async function advance() {
+  if (busy || pos >= TILES.length - 1) return;
+  busy = true; showGo(false);
+  await hop(pos, pos + 1);
+  pos++;
+  const t = TILES[pos];
+  if (t.t === 'q') openQuestion(t);
+  else if (t.t === 'bonus') openBonus(t.g);
+  else finish();
+}
+function resume() { busy = false; showGo(true); }
+
+$('go').addEventListener('click', advance);
+document.addEventListener('keydown', e => {
+  if ((e.key === ' ' || e.key === 'Enter') && !$('go').hidden && !busy && !document.querySelector('.overlay.on')) { e.preventDefault(); advance(); }
+});
+
+/* ---------- Сұрақ ---------- */
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const LET = ['A', 'B', 'C', 'D'];
+
+function openQuestion(t) {
+  const q = QUESTIONS[t.qi];
+  $('qnum').textContent = 'Сұрақ ' + t.n + ' / ' + QUESTIONS.length;
+  $('qtext').textContent = q.q;
+  $('fb').innerHTML = ''; $('qnext').hidden = true;
+  const opts = shuffle(q.o.map((txt, i) => ({txt, ok: i === q.a})));
+  const box = $('opts'); box.innerHTML = '';
+  opts.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.innerHTML = '<span class="let">' + LET[i] + '</span><span></span>';
+    b.lastChild.textContent = o.txt;
+    b.addEventListener('click', () => answer(b, o, opts, q));
+    box.appendChild(b); o.el = b;
+  });
+  $('qmodal').classList.add('on');
+}
+function answer(btn, o, opts, q) {
+  opts.forEach(x => { x.el.disabled = true; if (x.ok) x.el.classList.add('ok'); else if (x.el !== btn) x.el.classList.add('dim'); });
+  qDone++;
+  if (o.ok) { score += 10; correct++; sndGood(); $('fb').innerHTML = 'Дұрыс! +10 ⭐<small>' + q.e + '</small>'; }
+  else { btn.classList.add('no'); sndBad(); $('fb').innerHTML = 'Дұрыс жауап жасыл түспен көрсетілді.<small>' + q.e + '</small>'; }
+  updateHud();
+  $('qnext').hidden = false;
+}
+$('qnext').addEventListener('click', () => { $('qmodal').classList.remove('on'); resume(); });
+
+/* ---------- Мини-ойындар ---------- */
+let mgTimers = [];
+const clearMg = () => { mgTimers.forEach(t => { clearInterval(t); clearTimeout(t); }); mgTimers = []; };
+
+function openBonus(g) {
+  clearMg();
+  const area = $('mgArea'); area.className = 'hide'; area.innerHTML = '';
+  $('mgTime').textContent = ''; $('mgScore').textContent = '';
+  $('mgTime').style.display = 'none'; $('mgScore').style.display = 'none';
+  const btn = $('mgBtn'); btn.hidden = false;
+  if (g === 1) {
+    $('mgTitle').textContent = '⭐ Жұлдыз жинау';
+    $('mgDesc').textContent = '12 секунд ішінде пайда болған жұлдыздарды тез бас. Әр жұлдыз +2 бонус!';
+    btn.textContent = 'Бастау';
+    btn.onclick = startStars;
+  } else {
+    $('mgTitle').textContent = '🔢 Сандарды ретімен бас';
+    $('mgDesc').textContent = '1-ден 9-ға дейін сандарды ретімен мүмкіндігінше жылдам бас. Тез болсаң — бонус көп!';
+    btn.textContent = 'Бастау';
+    btn.onclick = startNumbers;
+  }
+  $('mg').classList.add('on');
+}
+function endMg(text, bonus) {
+  clearMg();
+  score += bonus; updateHud(); sndGood();
+  const area = $('mgArea'); area.className = 'hide'; area.innerHTML = '';
+  $('mgTime').style.display = 'none'; $('mgScore').style.display = 'none';
+  $('mgTitle').textContent = 'Керемет! +' + bonus + ' ⭐';
+  $('mgDesc').textContent = text;
+  const btn = $('mgBtn'); btn.hidden = false; btn.textContent = 'Жалғастыру';
+  btn.onclick = () => { $('mg').classList.remove('on'); resume(); };
+}
+
+function startStars() {
+  const area = $('mgArea'); area.className = ''; area.innerHTML = '';
+  $('mgBtn').hidden = true;
+  $('mgDesc').textContent = 'Жұлдыздарды бас!';
+  $('mgTime').style.display = ''; $('mgScore').style.display = '';
+  let left = 12, got = 0;
+  $('mgTime').textContent = '⏱ ' + left; $('mgScore').textContent = '⭐ ' + got;
+  const spawn = () => {
+    const s = document.createElement('div'); s.className = 'star';
+    s.style.left = (4 + Math.random() * 84) + '%'; s.style.top = (4 + Math.random() * 74) + '%';
+    s.addEventListener('pointerdown', e => { e.preventDefault(); if (!s.parentNode) return; s.remove(); got++; $('mgScore').textContent = '⭐ ' + got; sndPop(); });
+    area.appendChild(s);
+    mgTimers.push(setTimeout(() => s.remove(), 1500));
+  };
+  spawn();
+  mgTimers.push(setInterval(spawn, 520));
+  mgTimers.push(setInterval(() => {
+    left--; $('mgTime').textContent = '⏱ ' + Math.max(left, 0);
+    if (left <= 0) endMg('Сен ' + got + ' жұлдыз жинадың!', got * 2);
+  }, 1000));
+}
+
+function startNumbers() {
+  const area = $('mgArea'); area.className = ''; area.innerHTML = '';
+  $('mgBtn').hidden = true;
+  $('mgDesc').textContent = '1 → 9: ретімен бас!';
+  $('mgTime').style.display = ''; $('mgScore').style.display = '';
+  const grid = document.createElement('div'); grid.id = 'numGrid'; area.appendChild(grid);
+  let next = 1; const t0 = performance.now();
+  $('mgScore').textContent = 'Келесі: 1';
+  shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).forEach(n => {
+    const b = document.createElement('button'); b.className = 'num'; b.textContent = n;
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (b.classList.contains('done')) return;
+      if (n === next) {
+        b.classList.add('done'); sndPop(); next++;
+        $('mgScore').textContent = next > 9 ? 'Дайын!' : 'Келесі: ' + next;
+        if (next > 9) {
+          const sec = (performance.now() - t0) / 1000;
+          const bonus = sec < 10 ? 20 : sec < 16 ? 10 : 5;
+          endMg('Уақытың: ' + sec.toFixed(1) + ' секунд.', bonus);
+        }
+      } else { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); sndBad(); }
+    });
+    grid.appendChild(b);
+  });
+  mgTimers.push(setInterval(() => { $('mgTime').textContent = '⏱ ' + ((performance.now() - t0) / 1000).toFixed(1); }, 100));
+}
+
+/* ---------- Фейерверк ---------- */
+const fw = $('fw'), ctx = fw.getContext('2d');
+let rockets = [], parts = [], fwOn = false, fwRaf = 0, lastLaunch = 0;
+function sizeFw() { fw.width = innerWidth; fw.height = innerHeight; }
+addEventListener('resize', sizeFw); sizeFw();
+const COLORS = ['#FF5E7E', '#FFC928', '#7ED957', '#5CC8E8', '#B77CFF', '#FF9F43', '#FFFFFF'];
+
+function burst(x, y) {
+  const col = COLORS[Math.random() * COLORS.length | 0], col2 = COLORS[Math.random() * COLORS.length | 0];
+  const n = 80 + (Math.random() * 40 | 0);
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = 1.5 + Math.random() * 6.5;
+    parts.push({x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, decay: .008 + Math.random() * .012, c: i % 3 ? col : col2, r: 2 + Math.random() * 2.5});
+  }
+  tone(180 + Math.random() * 120, .35, 'sawtooth', 0, .05);
+}
+function launch() {
+  rockets.push({x: innerWidth * (.12 + Math.random() * .76), y: innerHeight, ty: innerHeight * (.12 + Math.random() * .38), vy: -(9 + Math.random() * 4)});
+}
+function fwLoop(t) {
+  ctx.clearRect(0, 0, fw.width, fw.height);
+  if (fwOn && t - lastLaunch > 380) { lastLaunch = t; launch(); if (Math.random() < .5) launch(); }
+  rockets = rockets.filter(r => {
+    r.y += r.vy; ctx.globalAlpha = 1; ctx.fillStyle = '#FFE9A8';
+    ctx.beginPath(); ctx.arc(r.x, r.y, 4, 0, 7); ctx.fill();
+    if (r.y <= r.ty) { burst(r.x, r.y); return false; }
+    return true;
+  });
+  parts = parts.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += .07; p.vx *= .985; p.vy *= .985; p.life -= p.decay;
+    if (p.life <= 0) return false;
+    ctx.globalAlpha = Math.max(p.life, 0); ctx.fillStyle = p.c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (.5 + p.life * .5), 0, 7); ctx.fill();
+    return true;
+  });
+  ctx.globalAlpha = 1;
+  if (fwOn || parts.length || rockets.length) fwRaf = requestAnimationFrame(fwLoop); else fwRaf = 0;
+}
+function startFireworks() { fwOn = true; if (!fwRaf) fwRaf = requestAnimationFrame(fwLoop); }
+function stopFireworks() { fwOn = false; rockets = []; parts = []; }
+
+/* ---------- Финиш / қайта бастау ---------- */
+function finish() {
+  startFireworks();
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, .35, 'triangle', i * .14, .12));
+  setTimeout(() => {
+    $('endText').textContent = 'Сен финишке жеттің! Дұрыс жауап: ' + correct + ' / ' + QUESTIONS.length + '. Жалпы ұпай: ⭐ ' + score + '.';
+    $('end').classList.add('on');
+  }, 1800);
+}
+function reset() {
+  stopFireworks(); clearMg();
+  pos = 0; score = 0; correct = 0; qDone = 0; busy = false;
+  $('end').classList.remove('on');
+  const p = pawnPos(0); setPawn(p.x, p.y, 0);
+  updateHud(); showGo(true);
+}
+$('again').addEventListener('click', reset);
+$('startBtn').addEventListener('click', () => { $('start').classList.remove('on'); reset(); tone(660, .12, 'triangle'); });
+
+const p0 = pawnPos(0); setPawn(p0.x, p0.y, 0); updateHud();
+})();
+</script>
+</body>
+</html>
